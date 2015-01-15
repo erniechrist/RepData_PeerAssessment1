@@ -70,11 +70,11 @@ plt
 
 ```r
 # get maximum average for any interval
-maxAve<-max(dft_byInterval$aveSteps)
+maxAve<-max(dft_byIntervalAve$aveSteps)
 # get interval for the maximum average
-maxAveInterval<-as.integer(dft_byInterval[dft_byInterval$aveSteps==maxAve,1])
+maxAveInterval<-as.integer(dft_byIntervalAve[dft_byIntervalAve$aveSteps==maxAve,1])
 ```
-The Interval with the maximum average number of steps taken :  1421246100
+The Interval with the maximum average number of steps taken :  835
 
 ##Imputing missing values
 
