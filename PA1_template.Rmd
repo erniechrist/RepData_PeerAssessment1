@@ -1,25 +1,109 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: Reproducable Research - Assignment 1
 ---
 
+Load required R libraries
 
-## Loading and preprocessing the data
+```{r loadLibraries }
+library(dplyr)
+library(ggplot2)
+library(xtable)
+```
+Load the data and convert to a table data frame
+
+```{r loadata }
+setwd("C:/Users/echrist/Google Drive/Coursera/05-ReproducableResearch")
+df_data <- read.csv(file="activity.csv", header=TRUE, sep=",")
+dft_data <- tbl_df(df_data)
+dft_data$date<-as.Date(dft_data$date, "%Y-%m-%d")
+```
+  
+##What is mean total number of steps taken per day?
+
+```{r CalcStepsDailyMean }
+# group data by day
+dft_byDay <- group_by(dft_data,date)
+# summarize number of steps
+dft_byDay<-summarise(dft_byDay,totalSteps=sum(steps,na.rm = TRUE))
+# plot 
+plt<-qplot(x=date,y=totalSteps, xlab="Date", ylab = "Total Steps",stat="identity", data=dft_byDay, geom="histogram")
+plt + ggtitle("Total Steps per Day")
+#cacluate mean and median daily total number of steps
+dailyStepMean<-mean(dft_byDay$totalSteps)
+dailyStepMedian<-median(dft_byDay$totalSteps)
+```
+The mean total number of steps taken per day:  `r dailyStepMean`  
+The median total number of steps taken per day:  `r dailyStepMedian`
+  
+##What is the average daily activity pattern?
+```{r CalcStepsTimeInterval }
+# group data by interval
+dft_byInterval <- group_by(dft_data,interval)
+# average number of steps
+dft_byInterval <- summarise(dft_byInterval,aveSteps=mean(steps,na.rm = TRUE))
+# plot
+plt<-qplot(x=interval,y=aveSteps, ylab="Average Steps",stat="identity", data=dft_byInterval, geom="line")
+plt + ggtitle("Average Steps per Day") + xlab("Time Interval\n (represented as number of minutes since midnight)")
+
+# get maximum average for any interval
+maxAve<-max(dft_byInterval$aveSteps)
+# get interval for the maximum average
+maxAveInterval<-as.integer(dft_byInterval[dft_byInterval$aveSteps==maxAve,1])
+```
+The Interval with the maximum average number of steps taken :  `r maxAveInterval`
+
+##Imputing missing values
+```{r CountNA }
+# get number of step values with NA
+numNA<-sum(is.na(dft_data$steps))
+```
+The number of NA values for steps is :  `r numNA`
+
+```{r ImputingNA }
+# Impute NA values with the average number of steps for that interval
+# - first join data to interval average on interval
+dft_dataImputed<-inner_join(dft_data, dft_byInterval)
+# - second create new column, use steps if available if not use interval average
+dft_dataImputed$stepsImputed<-dft_dataImputed$step
+dft_dataImputed[is.na(dft_dataImputed$stepsImputed),"stepsImputed"] <-dft_dataImputed[is.na(dft_dataImputed$stepsImputed),"aveSteps"]
+
+# group imputed data by day
+dft_byDayImputed <- group_by(dft_dataImputed,date)
+# summarize number of steps
+dft_byDayImputed<-summarise(dft_byDayImputed,totalSteps=sum(stepsImputed,na.rm = TRUE))
+# plot 
+plt<-qplot(x=date,y=totalSteps, xlab="Date", ylab = "Total Steps",stat="identity", data=dft_byDayImputed, geom="histogram")
+plt + ggtitle("Total Steps per Day (replacing NA with interval average)")
+#cacluate mean and median daily total number of steps
+dailyStepMeanImputed<-mean(dft_byDayImputed$totalSteps)
+dailyStepMedianImputed<-median(dft_byDayImputed$totalSteps)
+```
+The mean total number of steps taken per day (with NA replaced by interval average) :  `r dailyStepMeanImputed`  
+The median total number of steps taken per day (with NA replaced by interval average):  `r dailyStepMedianImputed`
 
 
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
+*The difference of mean and median values when imputing NA versus ignoring NA*  
+mean: `r dailyStepMeanImputed - dailyStepMean`  
+median `r dailyStepMedianImputed - dailyStepMedian`
 
 
+##Are there differences in activity patterns between weekdays and weekends?
+```{r weekdayVsWeekend }
+# copy the original data frame
+dft_data2<-dft_data
+# add a day of week column
+dft_data2$dow<-weekdays(dft_data$date)
+# add a weekend/weekday column
+dft_data2$weekendOrWeekday<-ifelse(dft_data2$dow=="Sunday" | dft_data2$dow=="Saturday","Weekend","Weekday")
+# convert column to a factor
+dft_data2$weekendOrWeekday<-as.factor(dft_data2$weekendOrWeekday)
 
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+# group data by interval
+dft_byWeekendInterval <- group_by(dft_data2,weekendOrWeekday,interval)
+# average number of steps
+dft_byWeekendInterval <- summarise(dft_byWeekendInterval,aveSteps=mean(steps,na.rm = TRUE))
+# plot
+plt<-qplot(x=interval,y=aveSteps, xlab="Time Interval", ylab="Average Steps",stat="identity", data=dft_byWeekendInterval, geom="line")
+plt<- plt + ggtitle("Average Steps by Interval") + xlab("Time Interval\n (represented as number of minutes since midnight)")
+plt + facet_grid(weekendOrWeekday ~ .)
+```
