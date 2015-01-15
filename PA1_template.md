@@ -9,6 +9,8 @@ Load required R libraries
 library(dplyr)
 library(ggplot2)
 library(xtable)
+library(scales)
+library(stringr)
 ```
 Load the data and convert to a table data frame
 
@@ -50,9 +52,18 @@ The median total number of steps taken per day:  10395
 dft_byInterval <- group_by(dft_data,interval)
 # average number of steps
 dft_byInterval <- summarise(dft_byInterval,aveSteps=mean(steps,na.rm = TRUE))
+# save a copy for later when we need to impute missing NAs
+dft_byIntervalAve<-dft_byInterval
+# convert interval to POSIXct time
+dft_byInterval$interval<-str_sub(paste("000",dft_byInterval$interval,sep=""),-4,-1)
+dft_byInterval$interval<-as.POSIXct(dft_byInterval$interval,format="%H%M")
 # plot
-plt<-qplot(x=interval,y=aveSteps, ylab="Average Steps",stat="identity", data=dft_byInterval, geom="line")
-plt + ggtitle("Average Steps per Day") + xlab("Time Interval\n (represented as number of minutes since midnight)")
+plt<-qplot(x=interval,y=aveSteps, xlab="Time Interval", ylab="Average Steps",stat="identity", data=dft_byInterval, geom="line")
+# - add title
+plt<- plt + ggtitle("Average Steps per Day")
+# - add time series scale
+plt<- plt + scale_x_datetime(labels = date_format("%H:%M"),breaks = "1 hour")
+plt
 ```
 
 ![plot of chunk CalcStepsTimeInterval](figure/CalcStepsTimeInterval-1.png) 
@@ -63,7 +74,7 @@ maxAve<-max(dft_byInterval$aveSteps)
 # get interval for the maximum average
 maxAveInterval<-as.integer(dft_byInterval[dft_byInterval$aveSteps==maxAve,1])
 ```
-The Interval with the maximum average number of steps taken :  835
+The Interval with the maximum average number of steps taken :  1421246100
 
 ##Imputing missing values
 
@@ -77,7 +88,7 @@ The number of NA values for steps is :  2304
 ```r
 # Impute NA values with the average number of steps for that interval
 # - first join data to interval average on interval
-dft_dataImputed<-inner_join(dft_data, dft_byInterval)
+dft_dataImputed<-inner_join(dft_data, dft_byIntervalAve)
 ```
 
 ```
@@ -130,9 +141,17 @@ dft_data2$weekendOrWeekday<-as.factor(dft_data2$weekendOrWeekday)
 dft_byWeekendInterval <- group_by(dft_data2,weekendOrWeekday,interval)
 # average number of steps
 dft_byWeekendInterval <- summarise(dft_byWeekendInterval,aveSteps=mean(steps,na.rm = TRUE))
+
+# convert interval to POSIXct time
+dft_byWeekendInterval$interval<-str_sub(paste("000",dft_byWeekendInterval$interval,sep=""),-4,-1)
+dft_byWeekendInterval$interval<-as.POSIXct(dft_byWeekendInterval$interval,format="%H%M")
 # plot
 plt<-qplot(x=interval,y=aveSteps, xlab="Time Interval", ylab="Average Steps",stat="identity", data=dft_byWeekendInterval, geom="line")
-plt<- plt + ggtitle("Average Steps by Interval") + xlab("Time Interval\n (represented as number of minutes since midnight)")
+# - add title
+plt<- plt + ggtitle("Average Steps by Interval")
+# - format time series
+plt<- plt + scale_x_datetime(labels = date_format("%H:%M"),breaks = "1 hour")
+# - add facet
 plt + facet_grid(weekendOrWeekday ~ .)
 ```
 
